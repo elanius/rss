@@ -51,10 +51,24 @@
         <enum>QLayout::SetDefaultConstraint</enum>
        </property>
        <item>
-        <widget class="QTreeView" name="treeView"/>
+        <widget class="QTreeWidget" name="treeWidget">
+         <attribute name="headerVisible">
+          <bool>false</bool>
+         </attribute>
+         <column>
+          <property name="text">
+           <string>default</string>
+          </property>
+         </column>
+         <item>
+          <property name="text">
+           <string>http://rss.sme.sk/rss/rss.asp?id=frontpage</string>
+          </property>
+         </item>
+        </widget>
        </item>
        <item>
-        <widget class="QLineEdit" name="lineEdit"/>
+        <widget class="QLineEdit" name="leNewFeed"/>
        </item>
        <item>
         <layout class="QHBoxLayout" name="horizontalLayout_2">
@@ -113,5 +127,59 @@
  <resources>
   <include location="rss.qrc"/>
  </resources>
- <connections/>
+ <connections>
+  <connection>
+   <sender>pbAdd</sender>
+   <signal>clicked()</signal>
+   <receiver>rssClass</receiver>
+   <slot>onAdd()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>20</x>
+     <y>406</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>31</x>
+     <y>443</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>pdRemove</sender>
+   <signal>clicked()</signal>
+   <receiver>rssClass</receiver>
+   <slot>onRemove()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>115</x>
+     <y>405</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>147</x>
+     <y>441</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>pbRefresh</sender>
+   <signal>clicked()</signal>
+   <receiver>rssClass</receiver>
+   <slot>onRefresh()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>196</x>
+     <y>401</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>255</x>
+     <y>443</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+ <slots>
+  <slot>OnAdd()</slot>
+  <slot>onRemove()</slot>
+  <slot>onRefresh()</slot>
+ </slots>
 </ui>

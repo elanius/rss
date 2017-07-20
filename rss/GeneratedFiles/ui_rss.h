@@ -20,7 +20,7 @@
 #include <QtWidgets/QPlainTextEdit>
 #include <QtWidgets/QPushButton>
 #include <QtWidgets/QSpacerItem>
-#include <QtWidgets/QTreeView>
+#include <QtWidgets/QTreeWidget>
 #include <QtWidgets/QVBoxLayout>
 #include <QtWidgets/QWidget>
 
@@ -33,8 +33,8 @@ public:
     QWidget *horizontalLayoutWidget;
     QHBoxLayout *horizontalLayout;
     QVBoxLayout *verticalLayout;
-    QTreeView *treeView;
-    QLineEdit *lineEdit;
+    QTreeWidget *treeWidget;
+    QLineEdit *leNewFeed;
     QHBoxLayout *horizontalLayout_2;
     QPushButton *pbAdd;
     QPushButton *pdRemove;
@@ -62,15 +62,17 @@ public:
         verticalLayout->setSpacing(10);
         verticalLayout->setObjectName(QStringLiteral("verticalLayout"));
         verticalLayout->setSizeConstraint(QLayout::SetDefaultConstraint);
-        treeView = new QTreeView(horizontalLayoutWidget);
-        treeView->setObjectName(QStringLiteral("treeView"));
+        treeWidget = new QTreeWidget(horizontalLayoutWidget);
+        new QTreeWidgetItem(treeWidget);
+        treeWidget->setObjectName(QStringLiteral("treeWidget"));
+        treeWidget->header()->setVisible(false);
 
-        verticalLayout->addWidget(treeView);
+        verticalLayout->addWidget(treeWidget);
 
-        lineEdit = new QLineEdit(horizontalLayoutWidget);
-        lineEdit->setObjectName(QStringLiteral("lineEdit"));
+        leNewFeed = new QLineEdit(horizontalLayoutWidget);
+        leNewFeed->setObjectName(QStringLiteral("leNewFeed"));
 
-        verticalLayout->addWidget(lineEdit);
+        verticalLayout->addWidget(leNewFeed);
 
         horizontalLayout_2 = new QHBoxLayout();
         horizontalLayout_2->setSpacing(10);
@@ -108,6 +110,9 @@ public:
         rssClass->setCentralWidget(centralWidget);
 
         retranslateUi(rssClass);
+        QObject::connect(pbAdd, SIGNAL(clicked()), rssClass, SLOT(onAdd()));
+        QObject::connect(pdRemove, SIGNAL(clicked()), rssClass, SLOT(onRemove()));
+        QObject::connect(pbRefresh, SIGNAL(clicked()), rssClass, SLOT(onRefresh()));
 
         QMetaObject::connectSlotsByName(rssClass);
     } // setupUi
@@ -115,6 +120,15 @@ public:
     void retranslateUi(QMainWindow *rssClass)
     {
         rssClass->setWindowTitle(QApplication::translate("rssClass", "rss", Q_NULLPTR));
+        QTreeWidgetItem *___qtreewidgetitem = treeWidget->headerItem();
+        ___qtreewidgetitem->setText(0, QApplication::translate("rssClass", "default", Q_NULLPTR));
+
+        const bool __sortingEnabled = treeWidget->isSortingEnabled();
+        treeWidget->setSortingEnabled(false);
+        QTreeWidgetItem *___qtreewidgetitem1 = treeWidget->topLevelItem(0);
+        ___qtreewidgetitem1->setText(0, QApplication::translate("rssClass", "http://rss.sme.sk/rss/rss.asp?id=frontpage", Q_NULLPTR));
+        treeWidget->setSortingEnabled(__sortingEnabled);
+
         pbAdd->setText(QApplication::translate("rssClass", "+", Q_NULLPTR));
         pdRemove->setText(QApplication::translate("rssClass", "-", Q_NULLPTR));
         pbRefresh->setText(QApplication::translate("rssClass", "Refresh", Q_NULLPTR));
