@@ -1,12 +1,25 @@
-#include <QtNetwork>
-
+#include <QListWidgetItem>
+#include <QDesktopServices>
+#include <QMessageBox>
+#include "FeedParser.h"
 #include "rss.h"
 
-
+Q_DECLARE_METATYPE(const CArticle*);
+Q_DECLARE_METATYPE(CChannel*);
 
 rss::rss(QWidget *parent) : QMainWindow(parent)
 {
 	ui.setupUi(this);
+
+	connect(&rssReader, &CRssReader::NewChannel, this, &rss::onNewChannel);
+
+	rssReader.LoadFromFile();
+	rssReader.RefreshAll();
+
+	timer.start(10*60*1000);
+
+	connect(&timer, &QTimer::timeout, this, &rss::onRefresh);
+	connect(ui.lArticles, &QListWidget::itemClicked, this, &rss::onArticleClicked);
 }
 
 
@@ -14,14 +27,27 @@ void rss::onAdd()
 {
 	if ( ui.leNewFeed->text().isEmpty() == false )
 	{
-		QTreeWidgetItem* feed = new QTreeWidgetItem;
-		feed->setText(0, ui.leNewFeed->text());
-
-		QTreeWidgetItem* child = new QTreeWidgetItem;
-		child->setText(0, "child");
-		feed->addChild(child);
-
-		ui.treeWidget->addTopLevelItem(feed);
+		QUrl url = QUrl::fromUserInput(ui.leNewFeed->text().trimmed());
+		if (url.isValid() && customValid(url))
+		{
+			auto channel = std::make_unique<CChannel>(url);
+			CChannel* channelPtr = channel.get();
+			if (rssReader.AddChannel(std::move(channel)))
+			{
+				channelPtr->Refresh();
+			}
+			else
+			{
+				QMessageBox messageBox;
+				messageBox.critical(0, "Error", QString("RSS feed already in list"));
+			}
+			
+		}
+		else
+		{
+			QMessageBox messageBox;
+			messageBox.critical(0, "Error", QString("RSS feed (%1) is not valid http link!").arg(ui.leNewFeed->text()));
+		}
 
 		ui.leNewFeed->clear();
 	}
@@ -30,119 +56,81 @@ void rss::onAdd()
 
 void rss::onRemove()
 {
-	auto item = ui.treeWidget->currentItem();
+	auto item = ui.lChannels->currentItem();
 	if ( item )
 	{
-		int index = ui.treeWidget->indexOfTopLevelItem(item);
-		auto taken = ui.treeWidget->takeTopLevelItem(index);
-		if ( taken )
-		{
-			delete taken;
-		}
+		rssReader.RemoveChannel(item->data(1000).value<CChannel*>());
+		delete ui.lChannels->takeItem(ui.lChannels->currentRow());
+
+		ui.lArticles->clear();
 	}
 }
 
 
 void rss::onRefresh()
 {
-	QTreeWidgetItemIterator it(ui.treeWidget);
+	rssReader.RefreshAll();
+}
 
-	while ( *it )
+void rss::onNewChannel(CChannel* channel)
+{
+	if (channel->IsValid() == false)
 	{
-		const QString urlSpec = (*it)->text(0).trimmed();
-		const QUrl url = QUrl::fromUserInput(urlSpec);
-
-		startRequest(url);
-
-		++it;
+		QMessageBox messageBox;
+		messageBox.critical(0, "Error", QString("Obtain RSS feed failed!"));
+		rssReader.RemoveChannel(channel);
+	}
+	else
+	{
+		auto channelItem = new QListWidgetItem(channel->Title());
+		channelItem->setData(1000, QVariant::fromValue<CChannel*>(channel));
+		ui.lChannels->addItem(channelItem);
 	}
 }
 
 
-void rss::startRequest(const QUrl &requestedUrl)
+void rss::onChannelSelect(QListWidgetItem* item)
 {
-	url = requestedUrl;
+	const CChannel* channel = item->data(1000).value<CChannel*>();
 
-	reply = qnam.get(QNetworkRequest(url));
-	connect(reply, &QNetworkReply::finished, this, &rss::httpFinished);
-	connect(reply, &QIODevice::readyRead, this, &rss::httpReadyRead);
+	showArticles(channel);
 }
 
 
-void rss::httpFinished()
+void rss::onArticleClicked(QListWidgetItem *item)
 {
-	QXmlStreamReader xml;
-	xml.addData(reply->readAll());
-	parseXML(xml);
+	const CArticle* article = item->data(1000).value<const CArticle*>();
+
+	QDesktopServices::openUrl(QUrl(article->Link()));
 }
 
 
-void rss::httpReadyRead()
+void rss::showArticles(const CChannel* channel)
 {
+	Q_ASSERT(channel);
 
+	ui.lArticles->clear();
+
+	channel->ForEachArticle([this](const CArticle& article) {
+		auto item = new QListWidgetItem(article.Title());
+		item->setToolTip(article.Description());
+		item->setData(1000, QVariant::fromValue<const CArticle*>(&article));
+		ui.lArticles->addItem(item);
+	});
 }
 
 
-void rss::parseXML(QXmlStreamReader& xml)
+void rss::closeEvent(QCloseEvent *event)
 {
-	QString currentTag;
-	QString linkString;
-	QString titleString;
-	QString dateString;
+	rssReader.SaveToFile();
+	event->accept();
+}
 
-	QTreeWidgetItem* feed = nullptr;
 
-	while ( !xml.atEnd() )
-	{
-		xml.readNext();
-		if ( xml.isStartElement() )
-		{
-			if ( xml.name() == "item" )
-			{
-				if ( titleString != "" )
-				{
-					feed = new QTreeWidgetItem;
-					feed->setText(0, titleString);
-					feed->setText(2, linkString);
-					ui.treeWidget->addTopLevelItem(feed);
-				}
+bool rss::customValid(QUrl& url)
+{
+	if (url.toString().startsWith("http", Qt::CaseInsensitive))
+		return true;
 
-				linkString.clear();
-				titleString.clear();
-				dateString.clear();
-			}
-
-			currentTag = xml.name().toString();
-		}
-		else if ( xml.isEndElement() )
-		{
-			if ( xml.name() == "item" )
-			{
-
-				QTreeWidgetItem *item = new QTreeWidgetItem(feed);
-				item->setText(0, titleString);
-				item->setText(1, dateString);
-				item->setText(2, linkString);
-				ui.treeWidget->addTopLevelItem(item);
-
-				titleString.clear();
-				linkString.clear();
-				dateString.clear();
-			}
-		}
-		else if ( xml.isCharacters() && !xml.isWhitespace() )
-		{
-			if ( currentTag == "title" )
-				titleString += xml.text().toString();
-			else if ( currentTag == "link" )
-				linkString += xml.text().toString();
-			else if ( currentTag == "pubDate" )
-				dateString += xml.text().toString();
-		}
-	}
-	if ( xml.error() && xml.error() != QXmlStreamReader::PrematureEndOfDocumentError )
-	{
-		qWarning() << "XML ERROR:" << xml.lineNumber() << ": " << xml.errorString();
-		//http.abort();
-	}
+	return false;
 }

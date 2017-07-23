@@ -1,10 +1,10 @@
 #pragma once
 
 #include <QtWidgets/QMainWindow>
-#include <QUrl>
-#include <QNetworkAccessManager>
-#include <QXmlStreamReader>
-
+#include <QCloseEvent>
+#include <QTimer>
+#include <QTest>
+#include "RssReader.h"
 #include "ui_rss.h"
 
 class rss : public QMainWindow
@@ -19,18 +19,17 @@ public slots:
 	void onAdd();
 	void onRemove();
 	void onRefresh();
+	void onChannelSelect(QListWidgetItem* item);
 
-	void httpFinished();
-	void httpReadyRead();
+	void onNewChannel(CChannel* channel);
+	void onArticleClicked(QListWidgetItem *item);
 
+	void closeEvent(QCloseEvent *event);
 private:
 	Ui::rssClass ui;
+	CRssReader rssReader;
+	QTimer timer;
 
-	QUrl url;
-	QNetworkAccessManager qnam;
-	
-	QNetworkReply *reply;
-
-	void startRequest(const QUrl& requestedUrl);
-	void parseXML(QXmlStreamReader& xml);
+	void showArticles(const CChannel* channel);
+	bool customValid(QUrl& url);
 };

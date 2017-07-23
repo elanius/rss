@@ -1,6 +1,12 @@
 .vs/
 x64/
+Release/
+Debug/
+Unittest/
 *.user
 *.pdb
 *.tlog
+*.log
 *.obj
+*.dll
+*.rss
